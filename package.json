@@ -4,9 +4,30 @@
   "description": "Calendar Todo Widget",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --dir & powershell -Command \"Compress-Archive -Path 'dist/win-unpacked/*' -DestinationPath 'dist/Calendar-Todo-win.zip' -Force\""
   },
   "devDependencies": {
-    "electron": "^30.0.0"
+    "electron": "^30.0.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.song.calendar-todo",
+    "productName": "Calendar Todo",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "app.js",
+      "style.css",
+      "timeline.js",
+      "timeline.css"
+    ],
+    "win": {
+      "target": "zip"
+    }
   }
 }
