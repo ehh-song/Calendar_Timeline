@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-"C:\Program Files\nodejs\npm.cmd" start
+npm start
 pause
