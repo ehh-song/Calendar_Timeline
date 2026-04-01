@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(npx electron:*)",
+      "Bash(tasklist)",
+      "Bash(taskkill:*)",
+      "Bash(npm start:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(where npm:*)",
+      "Bash(where node:*)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\" start)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" node_modules/electron/cli.js .)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" --check main.js)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" --check preload.js)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \"const fs=require\\('fs'\\); fs.writeFileSync\\('C:/Users/song/AppData/Roaming/calendar-todo-widget/test.txt','hello'\\); console.log\\('wrote ok'\\);\" 2>&1)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \"\nconst {app} = require\\('electron'\\);\nconsole.log\\('userData:', app.getPath\\('userData'\\)\\);\n\" 2>&1)"
+    ]
+  }
+}

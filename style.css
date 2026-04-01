@@ -1,0 +1,485 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    background: #dde3ea;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 0;
+}
+
+/* Electron: fill the full window */
+body.electron-mode {
+    background: #f5f5f7;
+    padding: 0;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+/* ─── App Shell ─── */
+#app {
+    width: 320px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    background: #f5f5f7;
+    border-radius: 16px;
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.08),
+        0 10px 32px rgba(0,0,0,0.14),
+        0 24px 56px rgba(0,0,0,0.10);
+    overflow: hidden;
+}
+
+body.electron-mode #app {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* ─── Header ─── */
+#header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 12px;
+    background: rgba(255,255,255,0.9);
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ─── Header Actions (settings + window controls) ─── */
+#header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Drag region in Electron */
+body.electron-mode #header {
+    -webkit-app-region: drag;
+    cursor: default;
+}
+
+body.electron-mode #header-actions,
+body.electron-mode #header-left {
+    -webkit-app-region: no-drag;
+}
+
+#header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+#header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1c1c1e;
+    letter-spacing: -0.2px;
+}
+
+#header-date {
+    font-size: 11px;
+    color: #8e8e93;
+    font-weight: 400;
+}
+
+/* ─── Window Controls ─── */
+#window-controls {
+    display: none; /* shown only in electron-mode */
+    gap: 4px;
+    align-items: center;
+}
+
+/* Settings button is always visible */
+#btn-settings { display: flex; }
+
+body.electron-mode #window-controls {
+    display: flex;
+}
+
+.win-btn {
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 11px;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s;
+    line-height: 1;
+}
+
+.win-btn:hover { background: rgba(0,0,0,0.12); }
+.win-btn.close:hover { background: #ff3b30; color: #fff; }
+.win-btn.pinned { background: rgba(0,122,255,0.15); color: #007aff; }
+.win-btn.active { background: rgba(0,122,255,0.15); color: #007aff; }
+
+/* ─── Tab Bar ─── */
+#tab-bar {
+    display: flex;
+    padding: 0 16px;
+    background: rgba(255,255,255,0.9);
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+    flex-shrink: 0;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    color: #8e8e93;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.tab-btn.active {
+    color: #007aff;
+    border-bottom-color: #007aff;
+}
+
+/* ─── Calendar Scroll ─── */
+#calendar {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px 0 12px;
+}
+
+#calendar::-webkit-scrollbar { width: 3px; }
+#calendar::-webkit-scrollbar-track { background: transparent; }
+#calendar::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+
+/* ─── Date Section ─── */
+.date-section {
+    padding: 7px 14px 5px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: background 0.1s;
+}
+
+.date-section.past { opacity: 0.5; }
+
+.date-section.today {
+    background: rgba(0, 122, 255, 0.05);
+    border-left: 3px solid #007aff;
+    padding-left: 11px;
+}
+
+/* Drop highlight on the whole section */
+.date-section.drop-target {
+    background: rgba(0, 122, 255, 0.07);
+    border-radius: 10px;
+    outline: 1.5px dashed rgba(0,122,255,0.35);
+    outline-offset: -2px;
+}
+
+/* ─── Date Header ─── */
+.date-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    padding: 2px 6px;
+    border-radius: 7px;
+    cursor: default;
+    transition: background 0.1s;
+}
+
+.date-header:hover { background: rgba(0,0,0,0.03); }
+
+.date-header.kb-selected {
+    background: rgba(0,122,255,0.08);
+    outline: 1.5px solid rgba(0,122,255,0.35);
+    outline-offset: -1px;
+}
+
+.date-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #007aff;
+    background: rgba(0,122,255,0.12);
+    padding: 1px 6px;
+    border-radius: 20px;
+}
+
+.date-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1c1c1e;
+}
+
+.date-day {
+    font-size: 12px;
+    color: #8e8e93;
+}
+
+.date-day.sun { color: #ff3b30; }
+.date-day.sat { color: #007aff; }
+
+/* ─── Todo List ─── */
+.todo-list {
+    min-height: 2px;
+}
+
+/* ─── Todo Item ─── */
+.todo-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 4px 6px;
+    border-radius: 7px;
+    cursor: grab;
+    transition: background 0.1s, opacity 0.15s;
+    user-select: none;
+}
+
+.todo-item:hover { background: rgba(0,0,0,0.04); }
+.todo-item.kb-selected {
+    background: rgba(0,122,255,0.08);
+    outline: 1.5px solid rgba(0,122,255,0.35);
+    outline-offset: -1px;
+}
+.todo-item.cut-pending {
+    opacity: 0.4;
+    outline: 1.5px dashed rgba(0,122,255,0.45);
+    outline-offset: -1px;
+}
+
+.todo-item:active { cursor: grabbing; }
+.todo-item.dragging { opacity: 0.2; }
+
+.todo-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #007aff;
+    flex-shrink: 0;
+}
+
+.todo-text {
+    font-size: 13px;
+    color: #1c1c1e;
+    flex: 1;
+    line-height: 1.45;
+    word-break: break-all;
+}
+
+.todo-text.done {
+    text-decoration: line-through;
+    color: #aeaeb2;
+}
+
+/* ─── Add Button ─── */
+.add-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 1px;
+    padding: 3px 6px;
+    background: none;
+    border: none;
+    color: #c7c7cc;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.1s, color 0.1s;
+    width: 100%;
+    text-align: left;
+}
+
+.add-btn:hover {
+    background: rgba(0,122,255,0.07);
+    color: #007aff;
+}
+
+/* ─── Inline Input ─── */
+.todo-input-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 6px;
+    background: rgba(0,122,255,0.06);
+    border-radius: 7px;
+    margin: 2px 0;
+}
+
+.todo-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1c1c1e;
+    caret-color: #007aff;
+}
+
+.todo-input::placeholder { color: #c7c7cc; }
+
+/* ─── Clipboard Banner ─── */
+#clipboard-banner {
+    margin: 6px 12px 2px;
+    padding: 7px 12px;
+    background: rgba(0,122,255,0.1);
+    border: 1px solid rgba(0,122,255,0.25);
+    border-radius: 8px;
+    font-size: 11.5px;
+    color: #007aff;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+/* ─── Drag Placeholder ─── */
+.drag-placeholder {
+    height: 28px;
+    background: rgba(0,122,255,0.07);
+    border: 1.5px dashed rgba(0,122,255,0.3);
+    border-radius: 7px;
+    margin: 2px 0;
+}
+
+/* ─── Context Menu ─── */
+#context-menu {
+    position: fixed;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 10px;
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.1),
+        0 8px 24px rgba(0,0,0,0.14);
+    z-index: 9999;
+    overflow: hidden;
+    min-width: 120px;
+    padding: 4px;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+#context-menu.hidden { display: none; }
+
+.menu-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.1s;
+    font-weight: 400;
+    color: #1c1c1e;
+}
+
+.menu-item:hover { background: rgba(0,0,0,0.05); }
+.menu-item.delete { color: #ff3b30; }
+.menu-item.delete:hover { background: rgba(255,59,48,0.08); }
+
+/* ─── Settings Panel ─── */
+#settings-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0 16px;
+}
+
+#settings-panel.hidden { display: none; }
+
+#settings-panel::-webkit-scrollbar { width: 3px; }
+#settings-panel::-webkit-scrollbar-track { background: transparent; }
+#settings-panel::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+
+.settings-section {
+    padding: 14px 16px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #aeaeb2;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    transition: background 0.1s;
+}
+
+.shortcut-row:hover { background: rgba(0,0,0,0.025); }
+
+.shortcut-label {
+    flex: 1;
+    font-size: 13px;
+    color: #1c1c1e;
+}
+
+.shortcut-badge {
+    min-width: 84px;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-family: 'SF Mono', 'Consolas', 'D2Coding', monospace;
+    color: #555;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.shortcut-badge:hover {
+    background: rgba(0,122,255,0.1);
+    color: #007aff;
+}
+
+.shortcut-badge.capturing {
+    background: rgba(0,122,255,0.12);
+    color: #007aff;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+}
+
+.shortcut-clear {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    color: #c7c7cc;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.1s, background 0.1s;
+    flex-shrink: 0;
+}
+
+.shortcut-clear:hover {
+    color: #ff3b30;
+    background: rgba(255,59,48,0.08);
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Todo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="timeline.css">
+</head>
+<body>
+    <div id="app">
+        <div id="header">
+            <div id="header-left">
+                <div id="header-title">Calendar</div>
+                <div id="header-date"></div>
+            </div>
+            <div id="header-actions">
+                <button id="btn-settings" class="win-btn" title="설정">&#9881;</button>
+                <div id="window-controls">
+                    <button id="btn-compact"  class="win-btn" title="오늘만 보기">&#9723;</button>
+                    <button id="btn-pin"      class="win-btn" title="항상 위에 고정">&#9677;</button>
+                    <button id="btn-minimize" class="win-btn" title="최소화">&#8722;</button>
+                    <button id="btn-close"    class="win-btn close" title="닫기">&#10005;</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-bar">
+            <button id="tab-calendar" class="tab-btn active">달력</button>
+            <button id="tab-timeline" class="tab-btn">타임라인</button>
+        </div>
+
+        <div id="calendar"></div>
+        <div id="timeline"></div>
+
+        <div id="settings-panel" class="hidden"></div>
+    </div>
+
+    <div id="context-menu" class="hidden">
+        <div class="menu-item" id="ctx-edit">수정</div>
+        <div class="menu-item delete" id="ctx-delete">삭제</div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="timeline.js"></script>
+</body>
+</html>
