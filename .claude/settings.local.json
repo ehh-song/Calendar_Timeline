@@ -26,7 +26,8 @@
       "Bash(npm list:*)",
       "Bash(npx rcedit:*)",
       "Bash(\"node_modules/electron-winstaller/vendor/rcedit.exe\" \"dist/win-unpacked/Calendar Todo.exe\" --set-icon \"assets/todo_icon.ico\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cmd:*)"
     ]
   }
 }
