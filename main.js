@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -36,6 +36,7 @@ app.whenReady().then(() => {
         minWidth: 280,
         maxWidth: 440,
         frame: false,
+        icon: nativeImage.createFromPath(path.join(__dirname, 'assets/todo_icon.ico')),
         backgroundColor: '#f5f5f7',
         hasShadow: true,
         resizable: true,
@@ -48,6 +49,7 @@ app.whenReady().then(() => {
     win.loadFile('index.html');
     win.center();   // Always center on launch
     win.focus();
+    win.setIcon(nativeImage.createFromPath(path.join(__dirname, 'assets/todo_icon.ico')));
 
     log('Window created and centered');
 
@@ -66,6 +68,19 @@ ipcMain.on('win-close',    () => win?.close());
 ipcMain.on('win-minimize', () => win?.minimize());
 ipcMain.on('win-pin',      (_, on)     => win?.setAlwaysOnTop(on));
 ipcMain.on('win-resize',   (_, w, h)   => win?.setSize(w, h));
+
+const OBSIDIAN_NOTES_DIR = 'C:\\Users\\song\\Desktop\\Song\\obsidian_song\\note';
+
+ipcMain.on('write-obsidian-note', (_, { project, fileName, content }) => {
+    try {
+        const dir = path.join(OBSIDIAN_NOTES_DIR, project);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, fileName), content, 'utf8');
+        log(`Obsidian note written: ${project}/${fileName}`);
+    } catch (err) {
+        log(`Failed to write Obsidian note: ${err.message}`);
+    }
+});
 
 app.on('window-all-closed', () => {
     log('All windows closed, quitting');

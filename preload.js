@@ -5,4 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimize: ()       => ipcRenderer.send('win-minimize'),
     pin:      (on)     => ipcRenderer.send('win-pin', on),
     resize:   (w, h)   => ipcRenderer.send('win-resize', w, h),
+    writeObsidianNote: (project, fileName, content) =>
+        ipcRenderer.send('write-obsidian-note', { project, fileName, content }),
 });

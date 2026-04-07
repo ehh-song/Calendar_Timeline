@@ -274,26 +274,103 @@
 }
 .tl-note-close:hover { background: rgba(0,0,0,0.12); }
 
-.tl-note-section { display: flex; flex-direction: column; gap: 5px; }
+.tl-note-proj-row {
+    display: flex; align-items: center; gap: 7px;
+    padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.06);
+    margin-bottom: 2px;
+}
+.tl-note-proj-label {
+    font-size: 11px; font-weight: 600; color: #aeaeb2;
+    text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
+}
+.tl-note-proj-input {
+    flex: 1; border: none; outline: none; background: none;
+    font-size: 12.5px; font-family: inherit; color: #1c1c1e;
+}
+.tl-note-proj-input::placeholder { color: #c7c7cc; }
+
+.tl-note-section { display: flex; flex-direction: column; gap: 4px; }
+
+.tl-note-label-row {
+    display: flex; align-items: center; gap: 5px;
+    border-radius: 6px; padding: 3px 5px; margin: 0 -5px;
+    cursor: default; transition: background 0.1s;
+}
+.tl-note-label-row.focused {
+    background: rgba(0,122,255,0.1);
+    border-left: 3px solid #007aff;
+    padding-left: 2px;
+}
+
+.tl-note-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
 
 .tl-note-label {
+    flex: 1;
     font-size: 11px; font-weight: 600; color: #aeaeb2;
     text-transform: uppercase; letter-spacing: 0.4px;
 }
 
-.tl-note-textarea {
-    width: 100%; box-sizing: border-box;
-    border: 1px solid rgba(0,0,0,0.1); border-radius: 7px;
-    padding: 7px 9px;
-    font-size: 12.5px; font-family: inherit; color: #1c1c1e;
-    background: rgba(0,0,0,0.02);
-    outline: none; resize: none; line-height: 1.55;
-    transition: border-color 0.12s;
+.tl-note-add-btn {
+    border: none; background: none; padding: 1px 4px;
+    font-size: 11px; color: #007aff; cursor: pointer; border-radius: 4px;
+    flex-shrink: 0;
 }
-.tl-note-textarea:focus { border-color: #007aff; }
+.tl-note-add-btn:hover { background: rgba(0,122,255,0.08); }
 
-.tl-note-actions {
-    display: flex; align-items: center; gap: 7px; padding-top: 2px;
+.tl-note-list { display: flex; flex-direction: column; gap: 2px; }
+
+.tl-note-empty {
+    font-size: 11.5px; color: #c7c7cc; padding: 4px 2px; font-style: italic;
+}
+
+.tl-note-item {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 5px; border-radius: 5px; margin: 0 -5px;
+    cursor: default;
+}
+.tl-note-item:hover .tl-note-del,
+.tl-note-item.focused .tl-note-del { opacity: 1; }
+.tl-note-item.focused { background: rgba(0,122,255,0.07); }
+
+.tl-note-cb {
+    width: 15px; height: 15px; flex-shrink: 0;
+    border: 1.5px solid #c7c7cc; border-radius: 50%;
+    background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: transparent; transition: all 0.12s;
+    padding: 0;
+}
+.tl-note-cb.checked {
+    background: #34c759; border-color: #34c759; color: #fff;
+}
+.tl-note-cb.checked::after { content: '✓'; }
+
+.tl-note-item-text {
+    flex: 1; font-size: 12.5px; color: #1c1c1e; line-height: 1.4;
+    cursor: default; word-break: break-word;
+}
+.tl-note-item.done .tl-note-item-text {
+    text-decoration: line-through; color: #aeaeb2;
+}
+
+.tl-note-del {
+    border: none; background: none; padding: 0;
+    width: 16px; height: 16px; flex-shrink: 0;
+    font-size: 13px; color: #aeaeb2; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; opacity: 0; transition: opacity 0.1s, background 0.1s;
+}
+.tl-note-del:hover { background: rgba(0,0,0,0.08); color: #ff3b30; }
+
+.tl-note-add-input,
+.tl-note-edit-input {
+    flex: 1; width: 100%; box-sizing: border-box;
+    border: 1px solid #007aff; border-radius: 5px;
+    padding: 3px 6px; font-size: 12.5px; font-family: inherit;
+    color: #1c1c1e; background: #fff; outline: none;
+    margin-top: 2px;
 }
 
 /* ─── Category manager overlay ─── */

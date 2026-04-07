@@ -27,8 +27,9 @@ let tlEvDrag = {
 // Saved modal state for round-tripping to/from cat manager
 let pendingModalData = null;
 
-// Notes — { eventId: { good, bad, insight } }
+// Notes — { eventId: { good: [{id,text,done}], bad: [...], insight: [...] } }
 let timelineNotes = {};
+let _noteKeyHandler = null;
 
 // ─── Category Persistence ─────────────────────────────────────────────────────
 
@@ -283,10 +284,59 @@ function closeCatManager() {
 
 // ─── Note Modal ───────────────────────────────────────────────────────────────
 
-function openNoteModal(evId, evName) {
+function minToTimeStr(min) {
+    return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+}
+
+function sanitizeFileName(str) {
+    return str.replace(/[\\/:*?"<>|]/g, '').trim();
+}
+
+function openNoteModal(evId, evName, dateKey, ev) {
     closeNoteModal();
     closeEventModal();
-    const note = timelineNotes[evId] || { good: '', bad: '', insight: '' };
+
+    // Load or migrate note data (old format: string values → new: arrays)
+    const raw = timelineNotes[evId];
+    let note;
+    if (!raw) {
+        note = { meta: {}, good: [], bad: [], insight: [] };
+    } else if (typeof raw.good === 'string' || typeof raw.bad === 'string' || typeof raw.insight === 'string') {
+        const ts = Date.now().toString(36);
+        note = {
+            meta: {},
+            good:    raw.good?.trim()    ? [{ id: `n${ts}a`, text: raw.good.trim(),    done: false }] : [],
+            bad:     raw.bad?.trim()     ? [{ id: `n${ts}b`, text: raw.bad.trim(),     done: false }] : [],
+            insight: raw.insight?.trim() ? [{ id: `n${ts}c`, text: raw.insight.trim(), done: false }] : [],
+        };
+        timelineNotes[evId] = note;
+        saveNotes();
+    } else {
+        if (!raw.meta) raw.meta = {};
+        note = raw;
+    }
+
+    // Snapshot event metadata (stays even if event is later deleted)
+    if (dateKey && ev) {
+        const catLabel = CATS[ev.category]?.label || ev.category || '';
+        note.meta.date      = dateKey;
+        note.meta.eventName = ev.name;
+        note.meta.timeRange = `${minToTimeStr(ev.startMin)}–${minToTimeStr(ev.endMin)}`;
+        note.meta.category  = catLabel;
+    }
+
+    const SECTIONS = [
+        { key: 'good',    label: '잘한 점',   color: '#34c759' },
+        { key: 'bad',     label: '아쉬운 점', color: '#ff9500' },
+        { key: 'insight', label: '깨달은 점', color: '#007aff' },
+    ];
+
+    // Virtual focus: { type:'section'|'item', key, id? }
+    let vFocus = { type: 'section', key: 'good' };
+    let isEditing = false;  // true while an input is active
+
+    const hdrEls  = {};  // key → label-row div
+    const listEls = {};  // key → list div
 
     const overlay = document.createElement('div');
     overlay.id = 'tl-note-overlay';
@@ -310,65 +360,375 @@ function openNoteModal(evId, evName) {
     hdr.appendChild(xBtn);
     card.appendChild(hdr);
 
-    // Three note sections
-    const SECTIONS = [
-        { key: 'good',    label: '잘한 점',   placeholder: '잘 된 것들을 적어보세요' },
-        { key: 'bad',     label: '아쉬운 점', placeholder: '아쉬웠던 것들을 적어보세요' },
-        { key: 'insight', label: '깨달은 점', placeholder: '깨달은 것들을 적어보세요' },
-    ];
-    const inputs = {};
-    SECTIONS.forEach(({ key, label, placeholder }) => {
+    // Project autocomplete helpers
+    function loadProjects() {
+        try { return JSON.parse(localStorage.getItem('cal-note-projects') || '[]'); } catch { return []; }
+    }
+    function saveProjectToList(name) {
+        if (!name) return;
+        const list = loadProjects().filter(p => p !== name);
+        list.unshift(name);
+        localStorage.setItem('cal-note-projects', JSON.stringify(list.slice(0, 50)));
+    }
+
+    // Project input row
+    const projRow = document.createElement('div');
+    projRow.className = 'tl-note-proj-row';
+    const projLabel = document.createElement('span');
+    projLabel.className = 'tl-note-proj-label';
+    projLabel.textContent = '프로젝트';
+    const projInput = document.createElement('input');
+    projInput.className = 'tl-note-proj-input';
+    projInput.placeholder = '프로젝트 이름 (Obsidian 폴더)';
+    projInput.value = note.meta.project || '';
+    projInput.setAttribute('list', 'tl-note-projects-list');
+
+    const datalist = document.createElement('datalist');
+    datalist.id = 'tl-note-projects-list';
+    loadProjects().forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        datalist.appendChild(opt);
+    });
+    document.body.appendChild(datalist);
+
+    projInput.addEventListener('change', () => {
+        const val = projInput.value.trim();
+        note.meta.project = val;
+        saveProjectToList(val);
+        saveData();
+    });
+    projInput.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteModal(); });
+    projRow.appendChild(projLabel);
+    projRow.appendChild(projInput);
+    card.appendChild(projRow);
+
+    function makeNoteId() {
+        return `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+    }
+
+    function makeTag(str) {
+        // Keep Korean/alphanumeric, convert spaces to hyphens, strip Obsidian-unsafe chars
+        return str.trim().replace(/\s+/g, '-').replace(/[#[\]|^\\]/g, '');
+    }
+
+    function buildMarkdown() {
+        const m = note.meta;
+        const tags = [];
+        if (m.eventName || evName) tags.push(makeTag(m.eventName || evName));
+        if (m.project)  tags.push(makeTag(m.project));
+        if (m.category) tags.push(makeTag(m.category));
+
+        const lines = [];
+        lines.push('---');
+        lines.push(`title: "${m.eventName || evName}"`);
+        lines.push(`date: ${m.date || ''}`);
+        lines.push(`time: "${m.timeRange || ''}"`);
+        lines.push(`category: ${m.category || ''}`);
+        lines.push(`project: ${m.project || ''}`);
+        lines.push('tags:');
+        tags.forEach(t => lines.push(`  - ${t}`));
+        lines.push('---');
+        lines.push('');
+        const LABELS = { good: '잘한 점', bad: '아쉬운 점', insight: '깨달은 점' };
+        ['good', 'bad', 'insight'].forEach(key => {
+            lines.push(`## ${LABELS[key]}`);
+            const items = note[key] || [];
+            if (items.length === 0) {
+                lines.push('');
+            } else {
+                items.forEach(item => lines.push(`- ${item.text}`));
+            }
+            lines.push('');
+        });
+        return lines.join('\n');
+    }
+
+    function writeToObsidian() {
+        const project = (note.meta.project || '').trim();
+        if (!project || !window.electronAPI?.writeObsidianNote) return;
+        const date = note.meta.date || '';
+        const name = sanitizeFileName(note.meta.eventName || evName);
+        const fileName = `${date} ${name}.md`;
+        window.electronAPI.writeObsidianNote(project, fileName, buildMarkdown());
+    }
+
+    function saveData() {
+        timelineNotes[evId] = note;
+        saveNotes();
+        writeToObsidian();
+    }
+
+    // Flat navigation list: [section, items..., section, items..., ...]
+    function getNavList() {
+        const list = [];
+        SECTIONS.forEach(({ key }) => {
+            list.push({ type: 'section', key });
+            [...note[key]].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0))
+                .forEach(item => list.push({ type: 'item', key, id: item.id }));
+        });
+        return list;
+    }
+
+    function applyFocus() {
+        SECTIONS.forEach(({ key }) => {
+            hdrEls[key]?.classList.toggle('focused', vFocus.type === 'section' && vFocus.key === key);
+            listEls[key]?.querySelectorAll('.tl-note-item').forEach(row => {
+                row.classList.toggle('focused', vFocus.type === 'item' && row.dataset.id === vFocus.id);
+            });
+        });
+    }
+
+    function setFocus(node) {
+        vFocus = node;
+        applyFocus();
+    }
+
+    function moveFocus(delta) {
+        const nav = getNavList();
+        let idx = vFocus.type === 'section'
+            ? nav.findIndex(n => n.type === 'section' && n.key === vFocus.key)
+            : nav.findIndex(n => n.type === 'item' && n.id === vFocus.id);
+        if (idx === -1) idx = 0;
+        const next = nav[Math.max(0, Math.min(nav.length - 1, idx + delta))];
+        if (next) setFocus(next);
+    }
+
+    function renderSection(key) {
+        const list = listEls[key];
+        list.innerHTML = '';
+        const sorted = [...note[key]].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+
+        if (sorted.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'tl-note-empty';
+            empty.textContent = 'Enter로 추가';
+            list.appendChild(empty);
+        }
+
+        sorted.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'tl-note-item' + (item.done ? ' done' : '');
+            row.dataset.id = item.id;
+
+            const cb = document.createElement('button');
+            cb.className = 'tl-note-cb' + (item.done ? ' checked' : '');
+            cb.setAttribute('tabindex', '-1');
+            cb.addEventListener('mousedown', e => e.preventDefault());
+            cb.addEventListener('click', () => {
+                item.done = !item.done;
+                saveData();
+                setFocus({ type: 'item', key, id: item.id });
+                renderSection(key);
+                applyFocus();
+            });
+
+            const txt = document.createElement('span');
+            txt.className = 'tl-note-item-text';
+            txt.textContent = item.text;
+
+            const del = document.createElement('button');
+            del.className = 'tl-note-del';
+            del.textContent = '×';
+            del.setAttribute('tabindex', '-1');
+            del.addEventListener('mousedown', e => e.preventDefault());
+            del.addEventListener('click', () => {
+                const nav = getNavList();
+                const ni = nav.findIndex(n => n.type === 'item' && n.id === item.id);
+                const fallback = nav[ni + 1] || nav[ni - 1] || { type: 'section', key };
+                note[key].splice(note[key].findIndex(i => i.id === item.id), 1);
+                saveData();
+                setFocus(fallback);
+                renderSection(key);
+                applyFocus();
+            });
+
+            row.addEventListener('mousedown', () => setFocus({ type: 'item', key, id: item.id }));
+            row.addEventListener('dblclick', () => startEdit(key, item));
+
+            row.appendChild(cb);
+            row.appendChild(txt);
+            row.appendChild(del);
+            list.appendChild(row);
+        });
+
+        applyFocus();
+    }
+
+    function startAdd(key) {
+        if (isEditing) return;
+        if (listEls[key].querySelector('.tl-note-add-input')) return;
+        isEditing = true;
+        setFocus({ type: 'section', key });
+
+        const inp = document.createElement('input');
+        inp.className = 'tl-note-add-input';
+        inp.placeholder = '항목 추가...';
+
+        let committed = false;
+        function commit() {
+            if (committed) return;
+            committed = true;
+            isEditing = false;
+            const val = inp.value.trim();
+            if (val) {
+                note[key].push({ id: makeNoteId(), text: val, done: false });
+                saveData();
+            }
+            renderSection(key);
+            // Return focus to section header (no continuous input)
+        }
+        inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { committed = true; isEditing = false; inp.remove(); }
+        });
+        inp.addEventListener('blur', commit);
+
+        listEls[key].querySelector('.tl-note-empty')?.remove();
+        listEls[key].appendChild(inp);
+        inp.focus();
+    }
+
+    function startEdit(key, item) {
+        if (isEditing) return;
+        const row = listEls[key]?.querySelector(`[data-id="${item.id}"]`);
+        if (!row) return;
+        isEditing = true;
+        setFocus({ type: 'item', key, id: item.id });
+
+        const txt = row.querySelector('.tl-note-item-text');
+        const inp = document.createElement('input');
+        inp.className = 'tl-note-edit-input';
+        inp.value = item.text;
+        txt.replaceWith(inp);
+        inp.focus();
+        inp.select();
+
+        let committed = false;
+        function commit() {
+            if (committed) return;
+            committed = true;
+            isEditing = false;
+            const val = inp.value.trim();
+            if (val) item.text = val;
+            saveData();
+            renderSection(key);
+            applyFocus();
+        }
+        inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { committed = true; isEditing = false; renderSection(key); applyFocus(); }
+        });
+        inp.addEventListener('blur', commit);
+    }
+
+    // Build sections
+    SECTIONS.forEach(({ key, label, color }) => {
         const sec = document.createElement('div');
         sec.className = 'tl-note-section';
-        const lbl = document.createElement('div');
+
+        const labelRow = document.createElement('div');
+        labelRow.className = 'tl-note-label-row';
+        hdrEls[key] = labelRow;
+
+        const dot = document.createElement('span');
+        dot.className = 'tl-note-dot';
+        dot.style.background = color;
+
+        const lbl = document.createElement('span');
         lbl.className = 'tl-note-label';
         lbl.textContent = label;
-        const ta = document.createElement('textarea');
-        ta.className = 'tl-note-textarea';
-        ta.placeholder = placeholder;
-        ta.value = note[key] || '';
-        ta.rows = 3;
-        ta.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteModal(); });
-        inputs[key] = ta;
-        sec.appendChild(lbl);
-        sec.appendChild(ta);
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'tl-note-add-btn';
+        addBtn.textContent = '+ 추가';
+        addBtn.setAttribute('tabindex', '-1');
+        addBtn.addEventListener('mousedown', e => e.preventDefault());
+        addBtn.addEventListener('click', () => startAdd(key));
+
+        labelRow.appendChild(dot);
+        labelRow.appendChild(lbl);
+        labelRow.appendChild(addBtn);
+        labelRow.addEventListener('mousedown', () => setFocus({ type: 'section', key }));
+
+        const list = document.createElement('div');
+        list.className = 'tl-note-list';
+        listEls[key] = list;
+
+        sec.appendChild(labelRow);
+        sec.appendChild(list);
         card.appendChild(sec);
+
+        renderSection(key);
     });
 
-    // Actions
-    const actions = document.createElement('div');
-    actions.className = 'tl-note-actions';
+    applyFocus();
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'tl-modal-btn';
-    cancelBtn.textContent = '취소';
-    cancelBtn.addEventListener('click', closeNoteModal);
+    _noteKeyHandler = e => {
+        if (isEditing || document.activeElement === projInput) return;
 
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'tl-modal-btn primary';
-    saveBtn.textContent = '저장';
-    saveBtn.addEventListener('click', () => {
-        timelineNotes[evId] = {
-            good:    inputs.good.value.trim(),
-            bad:     inputs.bad.value.trim(),
-            insight: inputs.insight.value.trim(),
-        };
-        saveNotes();
-        closeNoteModal();
-        renderTimeline();
-    });
-
-    actions.appendChild(cancelBtn);
-    actions.appendChild(saveBtn);
-    card.appendChild(actions);
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            moveFocus(1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            moveFocus(-1);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (vFocus.type === 'section') {
+                startAdd(vFocus.key);
+            } else {
+                const item = note[vFocus.key]?.find(i => i.id === vFocus.id);
+                if (item) {
+                    item.done = !item.done;
+                    saveData();
+                    renderSection(vFocus.key);
+                    applyFocus();
+                }
+            }
+        } else if (e.key === ' ' && vFocus.type === 'item') {
+            e.preventDefault();
+            const item = note[vFocus.key]?.find(i => i.id === vFocus.id);
+            if (item) {
+                item.done = !item.done;
+                saveData();
+                renderSection(vFocus.key);
+                applyFocus();
+            }
+        } else if (e.key === 'F2' && vFocus.type === 'item') {
+            const item = note[vFocus.key]?.find(i => i.id === vFocus.id);
+            if (item) startEdit(vFocus.key, item);
+        } else if ((e.key === 'Delete' || e.key === 'Backspace') && vFocus.type === 'item') {
+            e.preventDefault();
+            const { key, id } = vFocus;
+            const nav = getNavList();
+            const ni = nav.findIndex(n => n.type === 'item' && n.id === id);
+            const fallback = nav[ni + 1] || nav[ni - 1] || { type: 'section', key };
+            note[key].splice(note[key].findIndex(i => i.id === id), 1);
+            saveData();
+            setFocus(fallback);
+            renderSection(key);
+            applyFocus();
+        } else if (e.key === 'n' && e.ctrlKey && !e.shiftKey && !e.altKey) {
+            e.preventDefault();
+            startAdd(vFocus.key);
+        } else if (e.key === 'Escape') {
+            closeNoteModal();
+        }
+    };
+    document.addEventListener('keydown', _noteKeyHandler);
 
     overlay.appendChild(card);
     document.getElementById('app').appendChild(overlay);
-    inputs.good.focus();
 }
 
 function closeNoteModal() {
     document.getElementById('tl-note-overlay')?.remove();
+    document.getElementById('tl-note-projects-list')?.remove();
+    if (_noteKeyHandler) {
+        document.removeEventListener('keydown', _noteKeyHandler);
+        _noteKeyHandler = null;
+    }
 }
 
 // ─── Event Modal ──────────────────────────────────────────────────────────────
@@ -799,7 +1159,7 @@ function buildEventBlock(ev, dateKey) {
     el.addEventListener('click', e => {
         e.stopPropagation();
         if (tlEvDrag.wasDrag) { tlEvDrag.wasDrag = false; return; }
-        openNoteModal(ev.id, ev.name);
+        openNoteModal(ev.id, ev.name, dateKey, ev);
     });
 
     // Right-click → edit/settings modal

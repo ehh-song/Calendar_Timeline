@@ -16,7 +16,17 @@
       "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" --check main.js)",
       "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" --check preload.js)",
       "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \"const fs=require\\('fs'\\); fs.writeFileSync\\('C:/Users/song/AppData/Roaming/calendar-todo-widget/test.txt','hello'\\); console.log\\('wrote ok'\\);\" 2>&1)",
-      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \"\nconst {app} = require\\('electron'\\);\nconsole.log\\('userData:', app.getPath\\('userData'\\)\\);\n\" 2>&1)"
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -e \"\nconst {app} = require\\('electron'\\);\nconsole.log\\('userData:', app.getPath\\('userData'\\)\\);\n\" 2>&1)",
+      "Bash(npm run:*)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npm run build)",
+      "Bash(powershell -Command \"Compress-Archive -Path ''dist/win-unpacked/*'' -DestinationPath ''dist/Calendar-Todo-1.0.0-win.zip'' -Force\")",
+      "Bash(gh release:*)",
+      "Bash(where gh:*)",
+      "Bash(powershell -Command \"Get-Command gh -ErrorAction SilentlyContinue\")",
+      "Bash(npm list:*)",
+      "Bash(npx rcedit:*)",
+      "Bash(\"node_modules/electron-winstaller/vendor/rcedit.exe\" \"dist/win-unpacked/Calendar Todo.exe\" --set-icon \"assets/todo_icon.ico\")",
+      "Bash(powershell:*)"
     ]
   }
 }
